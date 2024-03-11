@@ -52,23 +52,23 @@ private:
 	};
 
 private:
-	void deleteBorder(vi2 aPos, Cell& a, vi2 bPos, Cell& b)
+	void toggleBorder(vi2 aPos, Cell& a, vi2 bPos, Cell& b)
 	{
 		if (aPos.x == bPos.x - 1)
 		{
-			a.edge[EAST] = false;
+			a.edge[EAST] = !a.edge[EAST];
 		}
 		else if(bPos.x == aPos.x - 1)
 		{
-			b.edge[EAST] = false;
+			b.edge[EAST] = !b.edge[EAST];
 		}
 		else if (aPos.y == bPos.y - 1)
 		{
-			a.edge[SOUTH] = false;
+			a.edge[SOUTH] = !a.edge[SOUTH];
 		}
 		else if (bPos.y == aPos.y - 1)
 		{
-			b.edge[SOUTH] = false;
+			b.edge[SOUTH] = !b.edge[SOUTH];
 		}
 	}
 
@@ -87,11 +87,22 @@ private:
 			{
 				mazeNeighbor.push_back(Nposition);
 			}
+			else if (grid[Nposition.y][Nposition.x].state == Open)
+			{
+				grid[Nposition.y][Nposition.x].state = Frontier;
+				frontier.push_back(Nposition);
+				toggleBorder(newMazeCell, grid[newMazeCell.y][newMazeCell.x], Nposition, grid[Nposition.y][Nposition.x]);
+			}
+			else if (grid[Nposition.y][Nposition.x].state == Frontier)
+			{
+				toggleBorder(newMazeCell, grid[newMazeCell.y][newMazeCell.x], Nposition, grid[Nposition.y][Nposition.x]);
+			}
 		}
 
 		vi2 toDelBorder = mazeNeighbor[rand() % mazeNeighbor.size()];
-		deleteBorder(newMazeCell, grid[newMazeCell.y][newMazeCell.x], toDelBorder, grid[toDelBorder.y][toDelBorder.x]);
-		std::cout << toDelBorder.x << " tdb " << toDelBorder.y << "\n";
+		toggleBorder(newMazeCell, grid[newMazeCell.y][newMazeCell.x], toDelBorder, grid[toDelBorder.y][toDelBorder.x]);
+		
+
 	}
 
 public:
@@ -140,13 +151,18 @@ public:
 			std::cout << frontierCell.x << " " << frontierCell.y << "\n";
 		}
 
-		MazeGenStep();
-
 		return true;
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
+		if (GetKey(olc::Key::K).bReleased)
+		{
+			if (frontier.size() > 0)
+			{
+				MazeGenStep();
+			}
+		}
 		for (int x = 0; x < WIDTH+2; x++)
 			for (int y = 0; y < HEIGHT+2; y++)
 			{
