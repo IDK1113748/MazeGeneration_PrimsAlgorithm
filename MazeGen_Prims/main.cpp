@@ -31,8 +31,9 @@ private:
 	};
 	enum CellState {
 		Open,     // Cells yet to be in the maze
-		InMaze,   	 
-		Frontier  // Open cells but they're bordered by InMaze cells (except walls), meaning they're eligible to become InMaze themselves
+		InMaze,
+		Frontier,  // Open cells but they're bordered by InMaze cells (except walls), meaning they're eligible to become InMaze themselves
+		Outside
 	};
 	struct Cell
 	{
@@ -51,13 +52,46 @@ private:
 	};
 
 private:
+	void deleteBorder(vi2 aPos, Cell& a, vi2 bPos, Cell& b)
+	{
+		if (aPos.x == bPos.x - 1)
+		{
+			a.edge[EAST] = false;
+		}
+		else if(bPos.x == aPos.x - 1)
+		{
+			b.edge[EAST] = false;
+		}
+		else if (aPos.y == bPos.y - 1)
+		{
+			a.edge[SOUTH] = false;
+		}
+		else if (bPos.y == aPos.y - 1)
+		{
+			b.edge[SOUTH] = false;
+		}
+	}
+
 	void MazeGenStep()
 	{
 		auto randomFrontierCell = std::next(frontier.begin(), rand() % frontier.size());
 		vi2 newMazeCell = *randomFrontierCell;
-		std::cout << newMazeCell.x << "   " << newMazeCell.y << "\n";
 		frontier.erase(randomFrontierCell);
 		grid[newMazeCell.y][newMazeCell.x].state = InMaze;
+
+		std::vector<vi2> mazeNeighbor;
+		for (int i = 0; i < 4; i++)
+		{
+			vi2 Nposition = { newMazeCell.x + orthoNeighbor[i].x, newMazeCell.y + orthoNeighbor[i].y };
+			if (grid[Nposition.y][Nposition.x].state == InMaze)
+			{
+				mazeNeighbor.push_back(Nposition);
+			}
+		}
+
+		vi2 toDelBorder = mazeNeighbor[rand() % mazeNeighbor.size()];
+		deleteBorder(newMazeCell, grid[newMazeCell.y][newMazeCell.x], toDelBorder, grid[toDelBorder.y][toDelBorder.x]);
+		std::cout << toDelBorder.x << " tdb " << toDelBorder.y << "\n";
 	}
 
 public:
@@ -67,16 +101,16 @@ public:
 		for (int x = 1; x < WIDTH+1; x++)
 		{
 			grid[0][x].edge[SOUTH] = true;
-			grid[0][x].state = InMaze;
+			grid[0][x].state = Outside;
 			grid[HEIGHT][x].edge[SOUTH] = true;
-			grid[HEIGHT+1][x].state = InMaze;
+			grid[HEIGHT+1][x].state = Outside;
 		}
 		for (int y = 1; y < HEIGHT + 1; y++)
 		{
 			grid[y][0].edge[EAST] = true;
-			grid[y][0].state = InMaze;
+			grid[y][0].state = Outside;
 			grid[y][WIDTH].edge[EAST] = true;
-			grid[y][WIDTH+1].state = InMaze;
+			grid[y][WIDTH+1].state = Outside;
 		}
 		for(int y = 1; y < HEIGHT+1; y++)
 			for (int x = 1; x < WIDTH+1; x++)
@@ -127,6 +161,9 @@ public:
 					break;
 				case Frontier:
 					p = olc::Pixel(200, 170, 170);
+					break;
+				case Outside:
+					p = olc::Pixel(200, 170, 255);
 					break;
 				}
 
