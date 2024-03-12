@@ -6,7 +6,7 @@
 #define WIDTH  40
 #define HEIGHT 40
 
-#define TILE_SIZE 16
+#define TILE_SIZE 8
 
 #define EAST 0
 #define SOUTH 1
@@ -30,10 +30,10 @@ private:
 		}
 	};
 	enum CellState {
+		Outside,
 		Open,     // Cells yet to be in the maze
 		InMaze,
-		Frontier,  // Open cells but they're bordered by InMaze cells (except walls), meaning they're eligible to become InMaze themselves
-		Outside
+		Frontier  // Open cells but they're bordered by InMaze cells (except walls), meaning they're eligible to become InMaze themselves
 	};
 	struct Cell
 	{
@@ -149,13 +149,13 @@ private:
 				switch /*(grid[y+1][x+1].state)*/ (grid[y][x].state)
 				{
 				case Open:
-					p = olc::Pixel(255, 255, 255);
-					break;
-				case InMaze:
 					p = olc::Pixel(230, 120, 120);
 					break;
+				case InMaze:
+					p = olc::Pixel(255, 255, 255);
+					break;
 				case Frontier:
-					p = olc::Pixel(200, 170, 170);
+					p = olc::Pixel(240, 175, 175);
 					break;
 				case Outside:
 					p = olc::Pixel(200, 170, 255);
@@ -165,7 +165,7 @@ private:
 				FillRect(TILE_SIZE * x, TILE_SIZE * y, TILE_SIZE, TILE_SIZE, p);
 
 				if (/*grid[y + 1][x + 1].edge[SOUTH]*/grid[y][x].edge[SOUTH])
-					DrawLine(TILE_SIZE * x, TILE_SIZE * (y + 1) - 1, TILE_SIZE * (x + 1), TILE_SIZE * (y + 1) - 1, olc::BLACK);
+					DrawLine(TILE_SIZE * x - 1, TILE_SIZE * (y + 1) - 1, TILE_SIZE * (x + 1), TILE_SIZE * (y + 1) - 1, olc::BLACK);
 				if (/*grid[y + 1][x + 1].edge[EAST]*/grid[y][x].edge[EAST])
 					DrawLine(TILE_SIZE * (x + 1) - 1, TILE_SIZE * y, TILE_SIZE * (x + 1) - 1, TILE_SIZE * (y + 1), olc::BLACK);
 			}
@@ -223,7 +223,7 @@ public:
 int main()
 {
 	MazePrims demo;
-	if (demo.Construct((WIDTH+2) * TILE_SIZE, (HEIGHT+2) * TILE_SIZE, 1, 1))
+	if (demo.Construct((WIDTH+2) * TILE_SIZE, (HEIGHT+2) * TILE_SIZE, 2, 2))
 		demo.Start();
 	return 0;
 }
