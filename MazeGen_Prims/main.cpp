@@ -3,10 +3,10 @@
 
 #include <list> 
 
-#define WIDTH  5
-#define HEIGHT 5
+#define WIDTH  40
+#define HEIGHT 40
 
-#define TILE_SIZE 32
+#define TILE_SIZE 16
 
 #define EAST 0
 #define SOUTH 1
@@ -51,9 +51,46 @@ private:
 		{-1,  0}
 	};
 
+	bool runMazeGen = false;
+
 private:
-	void toggleBorder(vi2 aPos, Cell& a, vi2 bPos, Cell& b)
+	void initMaze()
 	{
+		for (int y = 1; y < HEIGHT + 1; y++)
+			for (int x = 1; x < WIDTH + 1; x++)
+			{
+				grid[y][x].state = Open;
+				if(y < HEIGHT)
+					grid[y][x].edge[SOUTH] = false;
+				if(x < WIDTH)
+					grid[y][x].edge[EAST] = false;
+			}
+
+		vi2 position = { rand() % HEIGHT + 1, rand() % WIDTH + 1 };
+		grid[position.y][position.x].state = InMaze;
+		grid[position.y][position.x].edge[SOUTH] = TRUE;
+		grid[position.y][position.x].edge[EAST] = TRUE;
+		grid[position.y - 1][position.x].edge[SOUTH] = TRUE;
+		grid[position.y][position.x - 1].edge[EAST] = TRUE;
+
+		frontier.clear();
+		for (int i = 0; i < 4; i++)
+		{
+			vi2 Nposition = { position.x + orthoNeighbor[i].x, position.y + orthoNeighbor[i].y };
+			if (grid[Nposition.y][Nposition.x].state == Open)
+			{
+				grid[Nposition.y][Nposition.x].state = Frontier;
+				frontier.push_back(vi2(Nposition.x, Nposition.y));
+			}
+		}
+
+		runMazeGen = false;
+	}
+
+	void toggleBorder(vi2 aPos, vi2 bPos)
+	{
+		Cell& a = grid[aPos.y][aPos.x];
+		Cell& b = grid[bPos.y][bPos.x];
 		if (aPos.x == bPos.x - 1)
 		{
 			a.edge[EAST] = !a.edge[EAST];
@@ -83,88 +120,30 @@ private:
 		for (int i = 0; i < 4; i++)
 		{
 			vi2 Nposition = { newMazeCell.x + orthoNeighbor[i].x, newMazeCell.y + orthoNeighbor[i].y };
-			if (grid[Nposition.y][Nposition.x].state == InMaze)
+
+			switch (grid[Nposition.y][Nposition.x].state)
 			{
+			case InMaze:
 				mazeNeighbor.push_back(Nposition);
-			}
-			else if (grid[Nposition.y][Nposition.x].state == Open)
-			{
+				break;
+			case Open:
 				grid[Nposition.y][Nposition.x].state = Frontier;
-				frontier.push_back(Nposition);
-				toggleBorder(newMazeCell, grid[newMazeCell.y][newMazeCell.x], Nposition, grid[Nposition.y][Nposition.x]);
-			}
-			else if (grid[Nposition.y][Nposition.x].state == Frontier)
-			{
-				toggleBorder(newMazeCell, grid[newMazeCell.y][newMazeCell.x], Nposition, grid[Nposition.y][Nposition.x]);
+				frontier.push_back(Nposition);                    // Lack of break statement is intentional
+			case Frontier:
+				toggleBorder(newMazeCell, Nposition);
+				break;
 			}
 		}
 
 		vi2 toDelBorder = mazeNeighbor[rand() % mazeNeighbor.size()];
-		toggleBorder(newMazeCell, grid[newMazeCell.y][newMazeCell.x], toDelBorder, grid[toDelBorder.y][toDelBorder.x]);
-		
-
+		toggleBorder(newMazeCell, toDelBorder);
+	
 	}
 
-public:
-	bool OnUserCreate() override
+	void drawMaze()
 	{
-		srand(time(NULL));
-		for (int x = 1; x < WIDTH+1; x++)
-		{
-			grid[0][x].edge[SOUTH] = true;
-			grid[0][x].state = Outside;
-			grid[HEIGHT][x].edge[SOUTH] = true;
-			grid[HEIGHT+1][x].state = Outside;
-		}
-		for (int y = 1; y < HEIGHT + 1; y++)
-		{
-			grid[y][0].edge[EAST] = true;
-			grid[y][0].state = Outside;
-			grid[y][WIDTH].edge[EAST] = true;
-			grid[y][WIDTH+1].state = Outside;
-		}
-		for(int y = 1; y < HEIGHT+1; y++)
-			for (int x = 1; x < WIDTH+1; x++)
-			{
-				grid[y][x].state = Open;
-			}
-		
-		vi2 position = { rand() % HEIGHT + 1, rand() % WIDTH + 1 };
-		grid[position.y][position.x].state = InMaze;
-		grid[position.y][position.x].edge[SOUTH] = TRUE;
-		grid[position.y][position.x].edge[EAST] = TRUE;
-		grid[position.y-1][position.x].edge[SOUTH] = TRUE;
-		grid[position.y][position.x-1].edge[EAST] = TRUE;
-
-		for (int i = 0; i < 4; i++)
-		{
-			vi2 Nposition = { position.x + orthoNeighbor[i].x, position.y + orthoNeighbor[i].y };
-			if (grid[Nposition.y][Nposition.x].state == Open)
-			{
-				grid[Nposition.y][Nposition.x].state = Frontier;
-				frontier.push_back(vi2(Nposition.x, Nposition.y));
-			}
-		}
-
-		for (const auto& frontierCell : frontier)
-		{
-			std::cout << frontierCell.x << " " << frontierCell.y << "\n";
-		}
-
-		return true;
-	}
-
-	bool OnUserUpdate(float fElapsedTime) override
-	{
-		if (GetKey(olc::Key::K).bReleased)
-		{
-			if (frontier.size() > 0)
-			{
-				MazeGenStep();
-			}
-		}
-		for (int x = 0; x < WIDTH+2; x++)
-			for (int y = 0; y < HEIGHT+2; y++)
+		for (int x = 0; x < WIDTH + 2; x++)
+			for (int y = 0; y < HEIGHT + 2; y++)
 			{
 				olc::Pixel p;
 				switch /*(grid[y+1][x+1].state)*/ (grid[y][x].state)
@@ -185,13 +164,58 @@ public:
 
 				FillRect(TILE_SIZE * x, TILE_SIZE * y, TILE_SIZE, TILE_SIZE, p);
 
-				if (/*grid[y + 1][x + 1]*/grid[y][x].edge[SOUTH])
+				if (/*grid[y + 1][x + 1].edge[SOUTH]*/grid[y][x].edge[SOUTH])
 					DrawLine(TILE_SIZE * x, TILE_SIZE * (y + 1) - 1, TILE_SIZE * (x + 1), TILE_SIZE * (y + 1) - 1, olc::BLACK);
-				if (/*grid[y + 1][x + 1]*/grid[y][x].edge[EAST])
-					DrawLine(TILE_SIZE * (x + 1) - 1 , TILE_SIZE * y, TILE_SIZE * (x + 1) - 1, TILE_SIZE * (y + 1), olc::BLACK);
-				
-				
+				if (/*grid[y + 1][x + 1].edge[EAST]*/grid[y][x].edge[EAST])
+					DrawLine(TILE_SIZE * (x + 1) - 1, TILE_SIZE * y, TILE_SIZE * (x + 1) - 1, TILE_SIZE * (y + 1), olc::BLACK);
 			}
+	}
+
+public:
+	bool OnUserCreate() override
+	{
+		srand(time(NULL));
+		for (int x = 1; x < WIDTH+1; x++)
+		{
+			grid[0][x].edge[SOUTH] = true;
+			grid[0][x].state = Outside;
+			grid[HEIGHT][x].edge[SOUTH] = true;
+			grid[HEIGHT+1][x].state = Outside;
+		}
+		for (int y = 1; y < HEIGHT + 1; y++)
+		{
+			grid[y][0].edge[EAST] = true;
+			grid[y][0].state = Outside;
+			grid[y][WIDTH].edge[EAST] = true;
+			grid[y][WIDTH+1].state = Outside;
+		}
+
+		initMaze();
+
+		return true;
+	}
+
+	bool OnUserUpdate(float fElapsedTime) override
+	{
+		if (GetKey(olc::Key::G).bReleased)
+			runMazeGen = !runMazeGen;
+		if (runMazeGen || GetKey(olc::Key::S).bReleased)
+		{
+			if (frontier.size() > 0)
+			{
+				MazeGenStep();
+			}
+			else
+				runMazeGen = false;
+		}
+		if (GetKey(olc::Key::R).bReleased)
+			initMaze();
+		
+		static int drawMazeFrame = 0;
+		if(drawMazeFrame % 10 == 0)
+			drawMaze();
+		drawMazeFrame++;
+
 		return true;
 	}
 };
