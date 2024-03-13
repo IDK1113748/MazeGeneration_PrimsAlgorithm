@@ -3,8 +3,8 @@
 
 #include <list> 
 
-#define WIDTH  40
-#define HEIGHT 40
+#define WIDTH  50
+#define HEIGHT 30
 
 #define TILE_SIZE 8
 
@@ -40,7 +40,7 @@ private:
 		CellState state;
 		bool edge[2]; // southern and eastern edge
 	};
-	Cell grid[WIDTH+2][HEIGHT+2]; // +2 because it includes a bounding box that prevents illegal memory access
+	Cell grid[HEIGHT+2][WIDTH+2]; // +2 because it includes a bounding box that prevents illegal memory access
 	std::list<vi2> frontier;
 
 	const vi2 orthoNeighbor[4] =
@@ -66,19 +66,18 @@ private:
 					grid[y][x].edge[EAST] = false;
 			}
 
-		vi2 position = { rand() % HEIGHT + 1, rand() % WIDTH + 1 };
+		vi2 position = { rand() % WIDTH + 1, rand() % HEIGHT + 1 };
 		grid[position.y][position.x].state = InMaze;
-		grid[position.y][position.x].edge[SOUTH] = TRUE;
-		grid[position.y][position.x].edge[EAST] = TRUE;
-		grid[position.y - 1][position.x].edge[SOUTH] = TRUE;
-		grid[position.y][position.x - 1].edge[EAST] = TRUE;
 
 		frontier.clear();
 		for (int i = 0; i < 4; i++)
 		{
 			vi2 Nposition = { position.x + orthoNeighbor[i].x, position.y + orthoNeighbor[i].y };
+			
 			if (grid[Nposition.y][Nposition.x].state == Open)
 			{
+				toggleBorder(position, Nposition);
+				
 				grid[Nposition.y][Nposition.x].state = Frontier;
 				frontier.push_back(vi2(Nposition.x, Nposition.y));
 			}
@@ -145,8 +144,10 @@ private:
 		for (int x = 0; x < WIDTH + 2; x++)
 			for (int y = 0; y < HEIGHT + 2; y++)
 			{
+				if (GetKey(olc::Key::H).bReleased)
+					std::cout << x << " " << y << "  " << grid[y][x].state << "\n";
 				olc::Pixel p;
-				switch /*(grid[y+1][x+1].state)*/ (grid[y][x].state)
+				switch (grid[y][x].state) /*(grid[y+1][x+1].state)*/
 				{
 				case Open:
 					p = olc::Pixel(230, 120, 120);
@@ -164,9 +165,9 @@ private:
 
 				FillRect(TILE_SIZE * x, TILE_SIZE * y, TILE_SIZE, TILE_SIZE, p);
 
-				if (/*grid[y + 1][x + 1].edge[SOUTH]*/grid[y][x].edge[SOUTH])
+				if (grid[y][x].edge[SOUTH]/*grid[y + 1][x + 1].edge[SOUTH]*/)
 					DrawLine(TILE_SIZE * x - 1, TILE_SIZE * (y + 1) - 1, TILE_SIZE * (x + 1), TILE_SIZE * (y + 1) - 1, olc::BLACK);
-				if (/*grid[y + 1][x + 1].edge[EAST]*/grid[y][x].edge[EAST])
+				if (grid[y][x].edge[EAST]/*grid[y + 1][x + 1].edge[EAST]*/)
 					DrawLine(TILE_SIZE * (x + 1) - 1, TILE_SIZE * y, TILE_SIZE * (x + 1) - 1, TILE_SIZE * (y + 1), olc::BLACK);
 			}
 	}
