@@ -2,8 +2,9 @@
 #include "olcPixelGameEngine.h"
 
 #include <list> 
+#include <chrono>
 
-#define WIDTH  50
+#define WIDTH  45
 #define HEIGHT 30
 
 #define TILE_SIZE 8
@@ -12,6 +13,16 @@
 #define SOUTH 1
 #define WEST 2
 #define	NORTH 3
+
+struct vi2
+{
+	int x, y;
+	vi2(int X, int Y)
+	{
+		x = X;
+		y = Y;
+	}
+};
 
 class MazePrims
 {
@@ -118,15 +129,6 @@ public:
 	};
 
 private:
-	struct vi2
-	{
-		int x, y;
-		vi2(int X, int Y)
-		{
-			x = X;
-			y = Y;
-		}
-	};
 	struct Cell
 	{
 		CellState state;
@@ -178,8 +180,8 @@ public:
 	{
 		sAppName = "Maze generation - Prim's algorithm";
 	}
-
 private:
+	
 	MazePrims maze;
 
 	int xPos = 1;
@@ -188,6 +190,13 @@ private:
 	bool runMazeGen = false;
 	bool playMode = false;
 	bool won = false;
+
+	bool showThread = true;
+
+	std::vector<vi2> thread;
+
+	std::chrono::steady_clock::time_point startTime, endTime;
+	std::chrono::milliseconds duration;
 
 	void drawMaze()
 	{
@@ -217,15 +226,23 @@ private:
 					DrawLine(TILE_SIZE * x - 1, TILE_SIZE * (y + 1) - 1, TILE_SIZE * (x + 1), TILE_SIZE * (y + 1) - 1, olc::BLACK);
 				if (maze.grid[y][x].edge[EAST]/*grid[y + 1][x + 1].edge[EAST]*/)
 					DrawLine(TILE_SIZE * (x + 1) - 1, TILE_SIZE * y, TILE_SIZE * (x + 1) - 1, TILE_SIZE * (y + 1), olc::BLACK);
-			
+
 				if (x == xPos && y == yPos && playMode)
-					FillCircle(int(float(TILE_SIZE) * (float(x) + 0.4f)), int(float(TILE_SIZE) * (float(y) + 0.4f)), TILE_SIZE/2 - 2, olc::Pixel(0, 175, 250));
+					FillCircle(int(float(TILE_SIZE) * (float(x) + 0.4f)), int(float(TILE_SIZE) * (float(y) + 0.4f)), TILE_SIZE / 2 - 2, olc::Pixel(0, 175, 250));
+			}
+
+		if (showThread)
+			for (auto v = thread.begin(); v < thread.end() - 1; v++)
+			{
+				DrawLine(int(float(TILE_SIZE) * (float((v + 1)->x) + 0.4f)), int(float(TILE_SIZE) * (float((v + 1)->y) + 0.4f)), int(float(TILE_SIZE) * (float(v->x) + 0.4f)), int(float(TILE_SIZE) * (float(v->y) + 0.4f)), olc::RED);
 			}
 
 		if (won && ScreenWidth() >= 88)
 		{
 			static int size = ScreenWidth() / 88;
-			DrawString(ScreenWidth() / 2 - 44*size, ScreenHeight() / 2 - 4*size, std::string("You've won!"), olc::Pixel(235, 30, 35), size);
+			std::string time = std::to_string(float(int(duration.count()) / 100) / 10.0f);
+			time = time.substr(0, time.find(".") + 2);
+			DrawString(ScreenWidth() / 2 - 44*size, ScreenHeight() / 2 - 4*size, std::string("You've won!\n") + time + " s.", olc::Pixel(235, 30, 35), size);
 		}
 	}
 
@@ -246,60 +263,90 @@ private:
 
 	bool movePlayer(olc::Key input)
 	{
-		return (GetKey(input).bPressed/* || (GetKey(input).bHeld && GetKey(olc::Key::SHIFT).bHeld)*/);
+		return (GetKey(input).bPressed);
 	}
 
 public:
 	bool OnUserCreate() override
 	{
+		thread.push_back(vi2(xPos, yPos));
 		return true;
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
+		if (GetKey(olc::Key::T).bReleased)
+		{
+			showThread = !showThread;
+		}
 		if (!playMode)
 		{
 			if (GetKey(olc::Key::G).bReleased)
+			{
 				runMazeGen = !runMazeGen;
+			}
 			if (runMazeGen || GetKey(olc::Key::S).bReleased)
 			{
+				bool playModePrev = playMode;
 				playMode = !maze.MazeGenStep();
+
+				if (playMode && !playModePrev)
+					startTime = std::chrono::steady_clock::now();
 			}
 		}
 		else
 		{
 			//std::cout << xPos << " " << maze.Width << "\n";
+			bool moved = false;
 			if (!won)
 			{
-				if (movePlayer(olc::Key::LEFT) && !isWall(WEST))
+				if (GetKey(olc::Key::LEFT).bPressed && !isWall(WEST))
 				{
 					do {
 						xPos--;
 					} while (!isWall(WEST) && isWall(NORTH) && isWall(SOUTH));
+					moved = true;
 				}
-				if (movePlayer(olc::Key::RIGHT) && !isWall(EAST))
+				if (GetKey(olc::Key::RIGHT).bPressed && !isWall(EAST))
 				{
 					do {
 						xPos++;
 					} while (!isWall(EAST) && isWall(NORTH) && isWall(SOUTH));
-					
+					moved = true;
 				}
-				if (movePlayer(olc::Key::UP) && !isWall(NORTH))
+				if (GetKey(olc::Key::UP).bPressed && !isWall(NORTH))
 				{
 					do {
 						yPos--;
 					} while (!isWall(NORTH) && isWall(EAST) && isWall(WEST));
-					
+					moved = true;
 				}
-				if (movePlayer(olc::Key::DOWN) && !isWall(SOUTH))
+				if (GetKey(olc::Key::DOWN).bPressed && !isWall(SOUTH))
 				{
 					do {
 						yPos++;
 					} while (!isWall(SOUTH) && isWall(EAST) && isWall(WEST));
+					moved = true;
 				}
+			}
+			if (moved)
+			{
+				endTime = std::chrono::steady_clock::now();
+				if (thread.size() >= 2)
+				{
+					auto penultimate = (thread.end())-2;
+					if (penultimate->x == xPos && penultimate->y == yPos)
+						thread.pop_back();
+					else
+						thread.push_back(vi2(xPos, yPos));
+				}
+				else
+					thread.push_back(vi2(xPos, yPos));
 			}
 
 			won = (xPos == maze.Width && yPos == maze.Height);
+			if (won)
+				duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
 		}
 		
 		if (GetKey(olc::Key::R).bReleased)
@@ -309,6 +356,8 @@ public:
 			playMode = false;
 			won = false;
 			xPos = yPos = 1;
+			thread.clear();
+			thread.push_back(vi2(xPos, yPos));
 		}
 		
 		static int drawMazeFrame = 0;
